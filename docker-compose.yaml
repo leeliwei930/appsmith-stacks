@@ -1,0 +1,64 @@
+services:
+  mongo:
+    image: mongo:8.0.4
+    container_name: appsmith-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - appsmith_mongo:/data/db
+      - ./storage/mongodb/init/keys/replica.key:/keys/replica.key
+      - ./storage/mongodb/init/init-0.js:/docker-entrypoint-initdb.d/init-0.js
+    restart: always
+    networks:
+      - appsmith_network
+    env_file:
+      - .env.mongo
+    command: [
+     "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/keys/replica.key"
+    ]
+    healthcheck:
+      test: echo "try {rs.status()} catch(err) {rs.initiate()}" | mongosh --port 27017 -u $$MONGO_INITDB_ROOT_USERNAME -p $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --quiet
+      interval: 5m
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+  redis:
+    image: redis:7.4.2
+    container_name: appsmith-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - appsmith_redis:/data
+    restart: always
+    command: [ "redis-server", "--appendonly", "yes" ] # Enable persistence
+    networks:
+      - appsmith_network
+
+  appsmith:
+    image: appsmith/appsmith-ce:v1.60
+    env_file:
+      - .env
+    depends_on:
+      - mongo
+      - redis
+    ports:
+      - "8880:80"
+    volumes:
+      - appsmith_stacks:/appsmith-stacks
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - appsmith_network
+
+networks:
+  appsmith_network:
+    driver: bridge
+
+volumes:
+  appsmith_stacks:
+    driver: local
+  appsmith_mongo:
+    driver: local
+  appsmith_redis:
+    driver: local
