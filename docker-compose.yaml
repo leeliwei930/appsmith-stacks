@@ -7,7 +7,6 @@ services:
     volumes:
       - appsmith_mongo:/data/db
       - ./storage/mongodb/init/keys/replica.key:/keys/replica.key
-      - ./storage/mongodb/init/init-0.js:/docker-entrypoint-initdb.d/init-0.js
     restart: always
     networks:
       - appsmith_network
